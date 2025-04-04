@@ -1,0 +1,98 @@
+[
+  {
+    "sequence": "sequence_1",
+    "input_gps": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_1/MicrostrainMIP/gps.csv",
+    "input_imu": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_1/MicrostrainMIP/imu.csv",
+    "output_file": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/processed/core_trajectories/sequence_1_core.csv",
+    "rows_processed": 7078,
+    "start_time": 1637841694640.285,
+    "end_time": 1637843463892.419,
+    "duration_sec": 1769.2521340332032,
+    "distance_km": 9.010838421473249,
+    "avg_speed_kmh": 18.281850589578955
+  },
+  {
+    "sequence": "sequence_2",
+    "input_gps": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_2/MicrostrainMIP/gps.csv",
+    "input_imu": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_2/MicrostrainMIP/imu.csv",
+    "output_file": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/processed/core_trajectories/sequence_2_core.csv",
+    "rows_processed": 8627,
+    "start_time": 1637940950106.623,
+    "end_time": 1637943106608.932,
+    "duration_sec": 2156.5023088378907,
+    "distance_km": 9.144251473508865,
+    "avg_speed_kmh": 15.279196953288958
+  },
+  {
+    "sequence": "sequence_3",
+    "input_gps": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_3/MicrostrainMIP/gps.csv",
+    "input_imu": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_3/MicrostrainMIP/imu.csv",
+    "output_file": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/processed/core_trajectories/sequence_3_core.csv",
+    "rows_processed": 7091,
+    "start_time": 1637843660154.68,
+    "end_time": 1637845432639.68,
+    "duration_sec": 1772.485,
+    "distance_km": 8.965379116220916,
+    "avg_speed_kmh": 18.172635322319486
+  },
+  {
+    "sequence": "sequence_4",
+    "input_gps": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_4/MicrostrainMIP/gps.csv",
+    "input_imu": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_4/MicrostrainMIP/imu.csv",
+    "output_file": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/processed/core_trajectories/sequence_4_core.csv",
+    "rows_processed": 8073,
+    "start_time": 1637943135864.108,
+    "end_time": 1637945153861.598,
+    "duration_sec": 2017.9974899902343,
+    "distance_km": 9.089405964655992,
+    "avg_speed_kmh": 16.09033136738738
+  },
+  {
+    "sequence": "sequence_5",
+    "input_gps": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_5/MicrostrainMIP/gps.csv",
+    "input_imu": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_5/MicrostrainMIP/imu.csv",
+    "output_file": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/processed/core_trajectories/sequence_5_core.csv",
+    "rows_processed": 9278,
+    "start_time": 1638026655949.722,
+    "end_time": 1638028975183.597,
+    "duration_sec": 2319.233875,
+    "distance_km": 12.159405337176542,
+    "avg_speed_kmh": 18.661007947543606
+  },
+  {
+    "sequence": "sequence_6",
+    "input_gps": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_6/MicrostrainMIP/gps.csv",
+    "input_imu": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_6/MicrostrainMIP/imu.csv",
+    "output_file": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/processed/core_trajectories/sequence_6_core.csv",
+    "rows_processed": 9504,
+    "start_time": 1638029070452.398,
+    "end_time": 1638031446191.264,
+    "duration_sec": 2375.7388659667968,
+    "distance_km": 12.19070062291277,
+    "avg_speed_kmh": 18.35576486228017
+  },
+  {
+    "sequence": "sequence_7",
+    "input_gps": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_7/MicrostrainMIP/gps.csv",
+    "input_imu": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_7/MicrostrainMIP/imu.csv",
+    "output_file": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/processed/core_trajectories/sequence_7_core.csv",
+    "rows_processed": 8911,
+    "start_time": 1638186081753.832,
+    "end_time": 1638188309238.885,
+    "duration_sec": 2227.485052978516,
+    "distance_km": 9.104254105755226,
+    "avg_speed_kmh": 14.420929173125772
+  },
+  {
+    "sequence": "sequence_8",
+    "input_gps": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_8/MicrostrainMIP/gps.csv",
+    "input_imu": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/sequence_8/MicrostrainMIP/imu.csv",
+    "output_file": "/home/yzc/data/Parallel_Project_Development/analysis_now_data/data/processed/core_trajectories/sequence_8_core.csv",
+    "rows_processed": 14922,
+    "start_time": 1638188370748.976,
+    "end_time": 1638192100995.18,
+    "duration_sec": 3730.2462038574217,
+    "distance_km": 20.57865338974051,
+    "avg_speed_kmh": 19.75469624137438
+  }
+]
