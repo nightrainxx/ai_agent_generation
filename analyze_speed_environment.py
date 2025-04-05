@@ -188,220 +188,154 @@ def analyze_trajectory(trajectory_file, gis_data, trajectory_id):
 
 def analyze_speed_vs_slope(feature_df, window_size, output_prefix, landcover_type=None):
     """分析速度与有效坡度的关系（指定时间窗口和土地覆盖类型）"""
-    agg_df = aggregate_trajectory_data(feature_df, window_size)
-    
     # 如果指定了土地覆盖类型，只分析该类型的数据
     if landcover_type is not None:
-        agg_df = agg_df[agg_df['landcover'] == landcover_type]
+        feature_df = feature_df[feature_df['landcover'] == landcover_type]
         type_name = LANDCOVER_NAMES.get(landcover_type, str(landcover_type))
-    
-    # 打印有效坡度的基本统计信息
-    print(f"\n有效坡度统计信息（{window_size}秒窗口）:")
-    print(f"最小值: {agg_df['effective_slope'].min():.2f}")
-    print(f"最大值: {agg_df['effective_slope'].max():.2f}")
-    print(f"平均值: {agg_df['effective_slope'].mean():.2f}")
-    print(f"标准差: {agg_df['effective_slope'].std():.2f}")
-    print(f"上坡样本数: {(agg_df['effective_slope'] > 0).sum()}")
-    print(f"下坡样本数: {(agg_df['effective_slope'] < 0).sum()}")
     
     # 创建坡度分箱（每5度一个区间）
     bin_edges = np.arange(-35, 36, 5)
-    agg_df['slope_bin'] = pd.cut(agg_df['effective_slope'], bins=bin_edges)
     
-    # 计算每个分箱的统计信息
-    bin_stats = agg_df.groupby('slope_bin').agg({
-        'velocity_2d_ms': ['count', 'mean', 'std', 'median'],
-        'effective_slope': 'mean'
-    }).round(3)
-    
-    # 计算分箱后数据的整体R²
-    valid_bins = bin_stats.index[bin_stats['velocity_2d_ms']['count'] >= 2]
-    if len(valid_bins) >= 2:
-        X = bin_stats.loc[valid_bins, ('effective_slope', 'mean')].values.reshape(-1, 1)
-        y = bin_stats.loc[valid_bins, ('velocity_2d_ms', 'mean')].values
-        bin_model = LinearRegression()
-        bin_model.fit(X, y)
-        binned_r2 = bin_model.score(X, y)
-        bin_coef = bin_model.coef_[0]
-        bin_intercept = bin_model.intercept_
-    else:
-        binned_r2 = np.nan
-        bin_coef = np.nan
-        bin_intercept = np.nan
-    
-    # 按轨迹ID分组分析
-    results = []
-    for traj_id in agg_df['trajectory_id'].unique():
-        traj_df = agg_df[agg_df['trajectory_id'] == traj_id]
+    # 为每条轨迹创建一个图
+    for traj_id in feature_df['trajectory_id'].unique():
+        # 获取该轨迹的数据
+        traj_df = feature_df[feature_df['trajectory_id'] == traj_id]
+        agg_df = aggregate_trajectory_data(traj_df, window_size)
         
-        valid_mask = ~(np.isnan(traj_df['effective_slope']) | np.isnan(traj_df['velocity_2d_ms']))
-        if valid_mask.sum() < 2:  # 至少需要2个点才能计算相关性
-            continue
-            
-        X = traj_df['effective_slope'][valid_mask].values.reshape(-1, 1)
-        y = traj_df['velocity_2d_ms'][valid_mask].values
+        # 打印统计信息
+        print(f"\n轨迹{traj_id}的有效坡度统计信息（{window_size}秒窗口）:")
+        print(f"最小值: {agg_df['effective_slope'].min():.2f}")
+        print(f"最大值: {agg_df['effective_slope'].max():.2f}")
+        print(f"平均值: {agg_df['effective_slope'].mean():.2f}")
+        print(f"标准差: {agg_df['effective_slope'].std():.2f}")
+        print(f"上坡样本数: {(agg_df['effective_slope'] > 0).sum()}")
+        print(f"下坡样本数: {(agg_df['effective_slope'] < 0).sum()}")
         
-        # 分别计算上坡和下坡的相关性
-        up_mask = X.ravel() >= 0
-        down_mask = X.ravel() < 0
-        
-        # 只在样本数足够时计算相关系数
-        up_corr = pearsonr(X[up_mask].ravel(), y[up_mask])[0] if up_mask.sum() >= 2 else np.nan
-        down_corr = pearsonr(X[down_mask].ravel(), y[down_mask])[0] if down_mask.sum() >= 2 else np.nan
-        
-        # 分别计算上坡和下坡的R²
-        if up_mask.sum() >= 2:
-            up_model = LinearRegression()
-            up_model.fit(X[up_mask], y[up_mask])
-            up_r2 = up_model.score(X[up_mask], y[up_mask])
-        else:
-            up_r2 = np.nan
-            
-        if down_mask.sum() >= 2:
-            down_model = LinearRegression()
-            down_model.fit(X[down_mask], y[down_mask])
-            down_r2 = down_model.score(X[down_mask], y[down_mask])
-        else:
-            down_r2 = np.nan
-        
-        # 总体相关性和回归
-        correlation, p_value = pearsonr(X.ravel(), y)
-        model = LinearRegression()
-        model.fit(X, y)
-        r2_score = model.score(X, y)
-        
-        results.append({
-            'trajectory_id': traj_id,
-            'correlation': correlation,
-            'up_correlation': up_corr,
-            'down_correlation': down_corr,
-            'up_r2': up_r2,
-            'down_r2': down_r2,
-            'p_value': p_value,
-            'r2_score': r2_score,
-            'coefficient': model.coef_[0],
-            'intercept': model.intercept_,
-            'sample_count': len(y),
-            'up_sample_count': up_mask.sum(),
-            'down_sample_count': down_mask.sum()
+        # 分箱分析
+        agg_df['slope_bin'] = pd.cut(agg_df['effective_slope'], bins=bin_edges)
+        bin_stats = agg_df.groupby('slope_bin').agg({
+            'velocity_2d_ms': ['count', 'mean', 'std', 'median'],
+            'effective_slope': 'mean'
         })
-    
-    # 创建图表
-    fig = plt.figure(figsize=(20, 15))
-    
-    # 构建标题
-    if landcover_type is not None:
-        type_name = LANDCOVER_NAMES.get(landcover_type, str(landcover_type))
-        main_title = f'速度-坡度分析（{window_size}秒时间窗口，{type_name}）'
-    else:
-        main_title = f'速度-坡度分析（{window_size}秒时间窗口）'
-    fig.suptitle(main_title, fontsize=16, y=0.95)
-    
-    # 设置自适应字体大小
-    set_font_sizes(fig)
-    
-    # 所有轨迹的散点图
-    plt.subplot(321)
-    for traj_id in agg_df['trajectory_id'].unique():
-        traj_df = agg_df[agg_df['trajectory_id'] == traj_id]
-        valid_mask = ~(np.isnan(traj_df['effective_slope']) | np.isnan(traj_df['velocity_2d_ms']))
         
-        # 分别绘制上坡和下坡的点
-        up_mask = traj_df['effective_slope'] >= 0
-        down_mask = traj_df['effective_slope'] < 0
+        # 重命名列以便于访问
+        bin_stats.columns = ['count', 'mean_speed', 'std_speed', 'median_speed', 'mean_slope']
+        bin_stats = bin_stats.round(3)
         
-        plt.scatter(traj_df['effective_slope'][valid_mask & up_mask], 
-                   traj_df['velocity_2d_ms'][valid_mask & up_mask], 
-                   alpha=0.3, label=f'轨迹{traj_id}上坡')
-        plt.scatter(traj_df['effective_slope'][valid_mask & down_mask], 
-                   traj_df['velocity_2d_ms'][valid_mask & down_mask], 
-                   alpha=0.3, marker='s', label=f'轨迹{traj_id}下坡')
+        # 计算分箱后数据的整体R²
+        valid_bins = bin_stats.index[bin_stats['count'] >= 2]
+        if len(valid_bins) >= 2:
+            X = bin_stats.loc[valid_bins, 'mean_slope'].values.reshape(-1, 1)
+            y = bin_stats.loc[valid_bins, 'mean_speed'].values
+            bin_model = LinearRegression()
+            bin_model.fit(X, y)
+            binned_r2 = bin_model.score(X, y)
+            bin_coef = bin_model.coef_[0]
+            bin_intercept = bin_model.intercept_
+        else:
+            binned_r2 = np.nan
+            bin_coef = np.nan
+            bin_intercept = np.nan
+        
+        # 创建2x2的图表布局
+        fig = plt.figure(figsize=(15, 12))
+        
+        # 构建标题
+        title_parts = [f'轨迹{traj_id}速度-坡度分析', f'{window_size}秒时间窗口']
+        if landcover_type is not None:
+            title_parts.append(type_name)
+        main_title = '（'.join(title_parts) + '）'
+        fig.suptitle(main_title, fontsize=16, y=0.95)
+        
+        # 设置自适应字体大小
+        set_font_sizes(fig)
+        
+        # 1. 原始数据散点图（区分上下坡）
+        plt.subplot(221)
+        valid_mask = ~(np.isnan(agg_df['effective_slope']) | np.isnan(agg_df['velocity_2d_ms']))
+        up_mask = agg_df['effective_slope'] >= 0
+        down_mask = agg_df['effective_slope'] < 0
+        
+        plt.scatter(agg_df['effective_slope'][valid_mask & up_mask], 
+                   agg_df['velocity_2d_ms'][valid_mask & up_mask], 
+                   alpha=0.6, label='上坡', color='red')
+        plt.scatter(agg_df['effective_slope'][valid_mask & down_mask], 
+                   agg_df['velocity_2d_ms'][valid_mask & down_mask], 
+                   alpha=0.6, label='下坡', color='blue')
+        
+        plt.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
+        plt.xlabel('有效坡度（度，负值表示下坡）')
+        plt.ylabel('速度（米/秒）')
+        plt.title('原始数据散点图')
+        plt.legend()
+        plt.grid(True)
+        
+        # 2. 分箱箱线图
+        plt.subplot(222)
+        sns.boxplot(data=agg_df, x='slope_bin', y='velocity_2d_ms')
+        plt.xticks(rotation=45)
+        plt.xlabel('有效坡度区间（度）')
+        plt.ylabel('速度（米/秒）')
+        plt.title('分箱速度分布')
+        plt.grid(True)
+        
+        # 3. 分箱回归分析
+        plt.subplot(223)
+        bin_centers = [interval.mid for interval in valid_bins]
+        plt.scatter(bin_centers, bin_stats.loc[valid_bins, ('velocity_2d_ms', 'mean')], 
+                   label='分箱平均值', color='blue', s=50)
+        
+        if not np.isnan(binned_r2):
+            x_range = np.array([min(bin_centers), max(bin_centers)])
+            y_pred = bin_coef * x_range + bin_intercept
+            plt.plot(x_range, y_pred, 'r--', 
+                    label=f'拟合线 (R$^2$={binned_r2:.3f})')
+            
+        plt.errorbar(bin_centers, 
+                    bin_stats.loc[valid_bins, ('velocity_2d_ms', 'mean')],
+                    yerr=bin_stats.loc[valid_bins, ('velocity_2d_ms', 'std')],
+                    fmt='none', color='gray', alpha=0.5,
+                    label='标准差')
+            
+        plt.xlabel('有效坡度区间中点（度）')
+        plt.ylabel('平均速度（米/秒）')
+        plt.title(f'分箱回归分析 (R$^2$={binned_r2:.3f})')
+        plt.grid(True)
+        plt.legend()
+        
+        # 4. 时间序列图
+        plt.subplot(224)
+        plt.plot(agg_df['time_window'], agg_df['velocity_2d_ms'], 
+                label='速度', color='blue')
+        plt.plot(agg_df['time_window'], agg_df['effective_slope'], 
+                label='有效坡度', color='red', alpha=0.6)
+        plt.xlabel('时间')
+        plt.ylabel('速度（米/秒）/ 坡度（度）')
+        plt.title('速度和坡度的时间变化')
+        plt.grid(True)
+        plt.legend()
+        
+        plt.tight_layout()
+        
+        # 构建中文输出文件名
+        output_filename = f'轨迹{traj_id}_速度坡度分析_{window_size}秒'
+        if landcover_type is not None:
+            output_filename += f'_{type_name}'
+        plt.savefig(f'{output_filename}.png', bbox_inches='tight', dpi=300)
+        plt.close()
+        
+        # 保存分箱统计结果
+        bin_stats['binned_r2'] = binned_r2
+        bin_stats['regression_coef'] = bin_coef
+        bin_stats['regression_intercept'] = bin_intercept
+        
+        stats_filename = f'轨迹{traj_id}_坡度分箱统计_{window_size}秒'
+        if landcover_type is not None:
+            stats_filename += f'_{type_name}'
+        stats_filename += '.csv'
+        bin_stats.to_csv(stats_filename)
     
-    plt.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-    plt.xlabel('有效坡度（度，负值表示下坡）')
-    plt.ylabel('速度（米/秒）')
-    plt.title(f'速度-坡度散点图\n{window_size}秒')
-    plt.legend()
-    
-    # 核密度估计
-    plt.subplot(322)
-    valid_mask = ~(np.isnan(agg_df['effective_slope']) | np.isnan(agg_df['velocity_2d_ms']))
-    sns.kdeplot(data=agg_df[valid_mask], x='effective_slope', y='velocity_2d_ms', 
-                cmap='viridis', fill=True)
-    plt.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-    plt.xlabel('有效坡度（度，负值表示下坡）')
-    plt.ylabel('速度（米/秒）')
-    plt.title(f'速度-坡度联合密度分布\n{window_size}秒')
-    
-    # 每条轨迹的回归线
-    plt.subplot(323)
-    x_range = np.linspace(agg_df['effective_slope'].min(), 
-                         agg_df['effective_slope'].max(), 100)
-    for result in results:
-        traj_id = result['trajectory_id']
-        y_pred = result['coefficient'] * x_range + result['intercept']
-        label = (f'轨迹{traj_id}\n'
-                f'总体R$^2$={result["r2_score"]:.3f}\n'
-                f'上坡：R$^2$={result["up_r2"]:.3f}, r={result["up_correlation"]:.3f} (n={result["up_sample_count"]})\n'
-                f'下坡：R$^2$={result["down_r2"]:.3f}, r={result["down_correlation"]:.3f} (n={result["down_sample_count"]})')
-        plt.plot(x_range, y_pred, label=label)
-    
-    plt.axvline(x=0, color='gray', linestyle='--', alpha=0.5)
-    plt.xlabel('有效坡度（度，负值表示下坡）')
-    plt.ylabel('速度（米/秒）')
-    plt.title(f'速度-坡度回归分析\n{window_size}秒')
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    
-    # 分箱箱线图
-    plt.subplot(324)
-    sns.boxplot(data=agg_df, x='slope_bin', y='velocity_2d_ms')
-    plt.xticks(rotation=45)
-    plt.xlabel('有效坡度区间（度）')
-    plt.ylabel('速度（米/秒）')
-    plt.title(f'分箱速度分布\n{window_size}秒')
-    
-    # 分箱R²值图（使用分箱均值的整体R²）
-    plt.subplot(325)
-    bin_centers = [interval.mid for interval in valid_bins]
-    plt.scatter(bin_centers, bin_stats.loc[valid_bins, ('velocity_2d_ms', 'mean')], 
-               label='分箱平均值')
-    if not np.isnan(binned_r2):
-        x_range = np.array([min(bin_centers), max(bin_centers)])
-        y_pred = bin_coef * x_range + bin_intercept
-        plt.plot(x_range, y_pred, 'r--', 
-                label=f'拟合线 (R$^2$={binned_r2:.3f})')
-    plt.xlabel('有效坡度区间中点（度）')
-    plt.ylabel('平均速度（米/秒）')
-    plt.title(f'分箱速度-坡度关系\n整体R$^2$={binned_r2:.3f}')
-    plt.grid(True)
-    plt.legend()
-    
-    # 分箱统计信息
-    plt.subplot(326)
-    bin_means = bin_stats['velocity_2d_ms']['mean']
-    bin_stds = bin_stats['velocity_2d_ms']['std']
-    bin_centers = [interval.mid for interval in bin_means.index]
-    plt.errorbar(bin_centers, bin_means, yerr=bin_stds, fmt='o-', capsize=5)
-    plt.xlabel('有效坡度区间中点（度）')
-    plt.ylabel('平均速度（米/秒）')
-    plt.title(f'分箱速度统计\n{window_size}秒')
-    plt.grid(True)
-    
-    plt.tight_layout()
-    
-    # 构建中文输出文件名
-    output_filename = f'速度坡度分析_{window_size}秒'
-    if landcover_type is not None:
-        output_filename += f'_{type_name}'
-    plt.savefig(f'{output_filename}.png', bbox_inches='tight', dpi=300)
-    plt.close()
-    
-    # 将分箱R²添加到统计结果中
-    bin_stats['binned_r2'] = binned_r2
-    bin_stats['bin_regression_coef'] = bin_coef
-    bin_stats['bin_regression_intercept'] = bin_intercept
-    
-    return results, bin_stats
+    return None  # 不再返回结果，因为已经分别保存了每条轨迹的结果
 
 def analyze_landcover_effect(feature_df, window_size, output_prefix):
     """分析土地覆盖类型对速度的影响（指定时间窗口）"""
@@ -508,20 +442,34 @@ def main():
     for landcover_type in major_landcover_types:
         report += f"\n土地覆盖类型：{LANDCOVER_NAMES.get(landcover_type, str(landcover_type))}\n"
         report += "-" * 40 + "\n"
-        report += "窗口大小(s) | 轨迹ID | 样本数 | 相关系数 | R² | 斜率 | 截距 | P值\n"
+        report += "窗口大小(s) | 轨迹ID | 样本数 | 平均速度 | 有效坡度 | R² | 斜率 | 截距\n"
         report += "-" * 100 + "\n"
         
         for window_size in window_sizes:
             print(f"分析 {window_size}s 时间窗口，土地覆盖类型 {landcover_type}...")
-            results, bin_stats = analyze_speed_vs_slope(
-                combined_features, window_size, 'speed_vs_slope',
-                landcover_type=landcover_type)
             
-            for result in results:
-                report += f"{window_size:11d} | {result['trajectory_id']:8d} | "
-                report += f"{result['sample_count']:7d} | {result['correlation']:9.3f} | "
-                report += f"{result['r2_score']:4.3f} | {result['coefficient']:6.3f} | "
-                report += f"{result['intercept']:6.3f} | {result['p_value']:.2e}\n"
+            for traj_id in combined_features['trajectory_id'].unique():
+                stats_filename = f'轨迹{traj_id}_坡度分箱统计_{window_size}秒'
+                if landcover_type is not None:
+                    stats_filename += f'_{LANDCOVER_NAMES.get(landcover_type, str(landcover_type))}'
+                stats_filename += '.csv'
+                
+                try:
+                    stats_df = pd.read_csv(stats_filename)
+                    total_count = stats_df['count'].sum()
+                    mean_speed = stats_df['mean_speed'].mean()
+                    mean_slope = stats_df['mean_slope'].mean()
+                    r2 = stats_df['binned_r2'].iloc[0]
+                    coef = stats_df['regression_coef'].iloc[0]
+                    intercept = stats_df['regression_intercept'].iloc[0]
+                    
+                    report += f"{window_size:11d} | {traj_id:8d} | "
+                    report += f"{total_count:7d} | {mean_speed:9.3f} | "
+                    report += f"{mean_slope:9.3f} | {r2:6.3f} | "
+                    report += f"{coef:6.3f} | {intercept:6.3f}\n"
+                except (FileNotFoundError, KeyError) as e:
+                    print(f"警告：处理文件 {stats_filename} 时出错：{str(e)}")
+                    continue
     
     # 添加土地覆盖类型的总体分析
     report += "\n土地覆盖类型对速度的影响（不同时间窗口）:\n" + "-"*40 + "\n"
