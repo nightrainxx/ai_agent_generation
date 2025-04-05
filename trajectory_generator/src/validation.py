@@ -28,21 +28,18 @@ from .generator import TrajectoryGenerator
 class TrajectoryValidator:
     """轨迹验证器类"""
     
-    def __init__(self, env_maps: Any):
+    def __init__(self, env_maps: Any, generator: Any = None):
         """初始化验证器
         
         Args:
             env_maps: 环境地图对象
+            generator: 轨迹生成器（可选）
         """
         self.env_maps = env_maps
-        self.generator = TrajectoryGenerator()
-        
-        # 航点提取参数
-        self.min_distance = 30.0  # 最小航点间距(米)
-        self.max_angle = 5.0      # 最大航向变化(度)，降低到5度以更精确捕捉转向
-        
-        # 轨迹重采样参数
-        self.resample_freq = '250ms'  # 重采样频率(4Hz)
+        self.generator = generator or TrajectoryGenerator()
+        self.min_distance = 30.0  # 航点最小距离(米)
+        self.max_angle = 5.0  # 航向变化阈值(度)
+        self.use_original_points = True  # 是否直接使用原始轨迹点
         
     def validate(
         self,
@@ -51,33 +48,40 @@ class TrajectoryValidator:
         output_path: str = None,
         visualize: bool = True
     ) -> Tuple[pd.DataFrame, Dict[str, float]]:
-        """验证轨迹生成效果
-        
-        Args:
-            original_df: 原始轨迹数据
-            goal_id: 目标点ID
-            output_path: 输出路径(可选)
-            visualize: 是否可视化
-            
-        Returns:
-            Tuple[pd.DataFrame, Dict[str, float]]:
-                生成的轨迹数据
-                验证指标
-        """
-        print("\n开始轨迹验证...")
-        
-        # 1. 提取关键航点
-        waypoints = self.extract_waypoints(original_df, visualize=visualize)
+        """验证轨迹生成效果"""
+        # 1. 提取航点
+        waypoints = list(zip(original_df['x'].values, original_df['y'].values))
         
         # 2. 获取初始状态
-        initial_state = self._get_initial_state(original_df, waypoints[0])
+        initial_state = self.get_initial_state(original_df)
+        
+        # 传递基本参数给生成器，移除原始速度相关信息
+        sim_params = {
+            'points_count': len(original_df),  # 保持轨迹点数相同
+            'dt_sim': 0.25  # 4Hz采样率
+        }
+        
+        # 定义控制参数，完全依赖环境特征
+        control_params = {
+            'global_speed_multiplier': 1.0,  # 保持环境计算的速度
+            'max_speed': 8.0,
+            'max_acceleration': 1.5,
+            'max_deceleration': 2.0,
+            'max_turn_rate': 25.0,
+            'turn_p_gain': 0.6,
+            'waypoint_arrival_threshold': 5.0,
+            'curvature_factor': 0.65,
+            'min_speed': 1.0
+        }
         
         # 3. 生成新轨迹
         generated_df = self.generator.generate(
             waypoints=waypoints,
             initial_state=initial_state,
             goal_id=goal_id,
-            env_maps=self.env_maps
+            env_maps=self.env_maps,
+            sim_params=sim_params,
+            control_params=control_params
         )
         
         # 4. 计算验证指标
@@ -95,38 +99,33 @@ class TrajectoryValidator:
         return generated_df, metrics
     
     def _check_coordinate_system(self, df: pd.DataFrame) -> bool:
-        """检查数据框的坐标系统
+        """检查坐标系统
         
-        通过检查x和y列的数值范围来判断是否已经是UTM坐标系
+        检查是否已经是UTM坐标，还是需要转换
         
         Args:
             df: 轨迹数据框
             
         Returns:
-            bool: 如果是UTM坐标系返回True，否则返回False
+            bool: 是否是UTM坐标
         """
-        # 检查坐标范围
-        x_range = (df['x'].min(), df['x'].max())
-        y_range = (df['y'].min(), df['y'].max())
+        # 简单启发式检查：如果x和y的范围都很大，可能是UTM坐标
+        x_range = df['x'].max() - df['x'].min()
+        y_range = df['y'].max() - df['y'].min()
         
-        print("坐标范围检查:")
-        print(f"utm_x范围: {x_range[0]:.2f} - {x_range[1]:.2f}")
-        print(f"utm_y范围: {y_range[0]:.2f} - {y_range[1]:.2f}")
+        # UTM坐标通常是几百米到几公里的数量级
+        is_utm = x_range > 100 and y_range > 100
         
-        # UTM坐标通常是米制的大数值
-        # 经纬度通常在-180到180之间
-        is_utm = (
-            abs(x_range[0]) > 180 or
-            abs(x_range[1]) > 180 or
-            abs(y_range[0]) > 90 or
-            abs(y_range[1]) > 90
-        )
+        print(f"坐标类型检查:")
+        print(f"x范围: {df['x'].min():.1f} ~ {df['x'].max():.1f}")
+        print(f"y范围: {df['y'].min():.1f} ~ {df['y'].max():.1f}")
+        print(f"判断为{'UTM' if is_utm else 'WGS84'}坐标")
         
         return is_utm
     
     def extract_waypoints(
         self,
-        df: pd.DataFrame,
+        trajectory_df: pd.DataFrame,
         visualize: bool = False
     ) -> List[Tuple[float, float]]:
         """从轨迹中提取关键航点
@@ -137,7 +136,7 @@ class TrajectoryValidator:
         3. 环境特征变化
         
         Args:
-            df: 轨迹数据框
+            trajectory_df: 轨迹数据框
             visualize: 是否可视化提取过程
             
         Returns:
@@ -146,11 +145,11 @@ class TrajectoryValidator:
         print("\n开始提取关键航点...")
         
         # 1. 检查坐标系统
-        is_utm = self._check_coordinate_system(df)
+        is_utm = self._check_coordinate_system(trajectory_df)
         
         # 2. 转换为UTM坐标(如果需要)
         utm_points = []
-        for _, row in df.iterrows():
+        for _, row in trajectory_df.iterrows():
             if is_utm:
                 # 已经是UTM坐标，直接使用
                 x, y = row['x'], row['y']
@@ -315,23 +314,23 @@ class TrajectoryValidator:
             save_path
         )
 
-    def _get_initial_state(
+    def get_initial_state(
         self,
-        df: pd.DataFrame,
-        start_point: Tuple[float, float]
+        df: pd.DataFrame
     ) -> Dict[str, float]:
         """获取初始状态
         
         Args:
             df: 原始轨迹数据
-            start_point: 起点UTM坐标
             
         Returns:
             Dict[str, float]: 初始状态字典
         """
-        # 获取第一个点的速度
+        # 获取第一个点的速度和位置
         vn = df.iloc[0]['velocity_north_ms']
         ve = df.iloc[0]['velocity_east_ms']
+        x = df.iloc[0]['x']
+        y = df.iloc[0]['y']
         
         # 计算初始航向
         heading = np.degrees(np.arctan2(vn, ve))
@@ -339,8 +338,8 @@ class TrajectoryValidator:
             heading += 360
             
         return {
-            'x0': start_point[0],
-            'y0': start_point[1],
+            'x0': x,
+            'y0': y,
             'vx0': ve,
             'vy0': vn,
             'heading0': heading
@@ -437,8 +436,11 @@ class TrajectoryValidator:
             metrics: 统计指标
             save_path: 保存路径
         """
-        # 创建2x2的子图布局
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+        # 创建2x3的子图布局（多一个子图用于轨迹点索引-速度图）
+        fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, figsize=(15, 18))
+        
+        # 添加总标题
+        fig.suptitle(f'轨迹{save_path.split("trajectory_")[-1].split("_")[0]}分析结果\n原始速度: {metrics["original_mean_speed"]:.2f}±{metrics["original_std_speed"]:.2f} m/s | 生成速度: {metrics["generated_mean_speed"]:.2f}±{metrics["generated_std_speed"]:.2f} m/s | 相关系数: {metrics["speed_correlation"]:.3f}', fontsize=20, y=0.98)
         
         # 1. 轨迹形状对比 (左上)
         ax1.plot(original_df['x'], original_df['y'], 'b-', label='原始轨迹', alpha=0.7)
@@ -448,39 +450,74 @@ class TrajectoryValidator:
         ax1.plot(original_df['x'].iloc[0], original_df['y'].iloc[0], 'go', label='起点')
         ax1.plot(original_df['x'].iloc[-1], original_df['y'].iloc[-1], 'ro', label='终点')
         
-        ax1.set_title('轨迹形状对比')
-        ax1.set_xlabel('UTM-X (m)')
-        ax1.set_ylabel('UTM-Y (m)')
-        ax1.legend()
+        ax1.set_title('轨迹形状对比', fontsize=18)
+        ax1.set_xlabel('UTM-X (m)', fontsize=16)
+        ax1.set_ylabel('UTM-Y (m)', fontsize=16)
+        ax1.legend(fontsize=14)
         ax1.grid(True)
-        ax1.axis('equal')  # 保持比例一致
+        ax1.axis('equal')
         
         # 2. 速度时间序列对比 (右上)
-        time_original = np.arange(len(original_df)) / 4.0  # 4Hz采样率
-        time_generated = np.arange(len(generated_df)) / 4.0
+        # 如果有时间戳直接使用，否则基于采样率估计
+        if 'timestamp_ms' in original_df.columns and 'timestamp_ms' in generated_df.columns:
+            # 转换为秒
+            time_original = original_df['timestamp_ms'].values / 1000.0
+            time_original = time_original - time_original[0]  # 从0开始
+            
+            time_generated = generated_df['timestamp_ms'].values / 1000.0
+            time_generated = time_generated - time_generated[0]  # 从0开始
+        else:
+            # 使用单位时间步作为估计
+            time_original = np.arange(len(original_df)) / 4.0  # 假设4Hz
+            time_generated = np.arange(len(generated_df)) / 4.0
+            
+        # 计算实际的时间步长
+        dt_original = np.mean(np.diff(time_original)) if len(time_original) > 1 else 0.25
+        dt_generated = np.mean(np.diff(time_generated)) if len(time_generated) > 1 else 0.25
         
         original_speed = np.sqrt(original_df['velocity_north_ms']**2 + original_df['velocity_east_ms']**2)
         generated_speed = np.sqrt(generated_df['velocity_north_ms']**2 + generated_df['velocity_east_ms']**2)
         
+        # 确保两个时间序列的最大值相同（以便比较）
+        max_time = max(time_original[-1], time_generated[-1])
+        ax2.set_xlim([0, max_time])
+        
         ax2.plot(time_original, original_speed, 'b-', label='原始速度', alpha=0.7)
         ax2.plot(time_generated, generated_speed, 'r--', label='生成速度', alpha=0.7)
-        ax2.set_title('速度时间序列对比')
-        ax2.set_xlabel('时间 (s)')
-        ax2.set_ylabel('速度 (m/s)')
-        ax2.legend()
+        ax2.set_title(f'速度时间序列对比 (原始dt={dt_original:.3f}s, 生成dt={dt_generated:.3f}s)', fontsize=18)
+        ax2.set_xlabel('时间 (s)', fontsize=16)
+        ax2.set_ylabel('速度 (m/s)', fontsize=16)
+        ax2.legend(fontsize=14)
         ax2.grid(True)
         
-        # 3. 速度分布对比 (左下)
+        # 3. 速度分布对比 (左中)
         ax3.hist(original_speed, bins=30, density=True, alpha=0.5, color='b', label='原始速度')
         ax3.hist(generated_speed, bins=30, density=True, alpha=0.5, color='r', label='生成速度')
-        ax3.set_title('速度分布对比')
-        ax3.set_xlabel('速度 (m/s)')
-        ax3.set_ylabel('概率密度')
-        ax3.legend()
+        ax3.set_title('速度分布对比', fontsize=18)
+        ax3.set_xlabel('速度 (m/s)', fontsize=16)
+        ax3.set_ylabel('概率密度', fontsize=16)
+        ax3.legend(fontsize=14)
         ax3.grid(True)
         
-        # 4. 统计指标展示 (右下)
+        # 4. 统计指标展示 (右中)
         ax4.axis('off')
+        
+        # 计算总时间和距离
+        total_time_original = time_original[-1] - time_original[0]
+        total_time_generated = time_generated[-1] - time_generated[0]
+        
+        # 计算总距离
+        def calculate_distance(df):
+            if len(df) <= 1:
+                return 0
+            points = np.column_stack([df['x'].values, df['y'].values])
+            diffs = np.diff(points, axis=0)
+            distances = np.sqrt(np.sum(diffs**2, axis=1))
+            return np.sum(distances)
+        
+        total_distance_original = calculate_distance(original_df)
+        total_distance_generated = calculate_distance(generated_df)
+        
         metrics_text = (
             f"统计指标:\n\n"
             f"原始平均速度: {metrics['original_mean_speed']:.2f} m/s\n"
@@ -488,14 +525,60 @@ class TrajectoryValidator:
             f"原始速度标准差: {metrics['original_std_speed']:.2f} m/s\n"
             f"生成速度标准差: {metrics['generated_std_speed']:.2f} m/s\n\n"
             f"速度相关系数: {metrics['speed_correlation']:.3f}\n"
-            f"Hausdorff距离: {metrics['hausdorff_distance']:.1f} m"
+            f"Hausdorff距离: {metrics['hausdorff_distance']:.1f} m\n\n"
+            f"原始轨迹时间: {total_time_original:.1f} s\n"
+            f"生成轨迹时间: {total_time_generated:.1f} s\n\n"
+            f"原始轨迹距离: {total_distance_original:.1f} m\n"
+            f"生成轨迹距离: {total_distance_generated:.1f} m\n\n"
+            f"原始轨迹点数: {len(original_df)}\n"
+            f"生成轨迹点数: {len(generated_df)}"
         )
-        ax4.text(0.1, 0.5, metrics_text, fontsize=12, va='center')
+        ax4.text(0.1, 0.5, metrics_text, fontsize=14, va='center')
+        
+        # 5. 新增：按轨迹点索引的速度对比图 (左下)
+        # 创建点索引（两个轨迹都从0开始）
+        idx_original = np.arange(len(original_df))
+        idx_generated = np.arange(len(generated_df))
+        
+        # 如果两个轨迹长度不一致，进行重采样以便比较
+        if len(original_df) != len(generated_df):
+            # 重采样到较短的长度
+            target_len = min(len(original_df), len(generated_df))
+            
+            # 如果原始轨迹更长，重采样它
+            if len(original_df) > target_len:
+                resampled_indices = np.linspace(0, len(original_df)-1, target_len).astype(int)
+                idx_original = idx_original[resampled_indices]
+                original_speed_resampled = original_speed.iloc[resampled_indices].values
+            else:
+                original_speed_resampled = original_speed.values
+            
+            # 如果生成轨迹更长，重采样它
+            if len(generated_df) > target_len:
+                resampled_indices = np.linspace(0, len(generated_df)-1, target_len).astype(int)
+                idx_generated = idx_generated[resampled_indices]
+                generated_speed_resampled = generated_speed.iloc[resampled_indices].values
+            else:
+                generated_speed_resampled = generated_speed.values
+        else:
+            # 长度一致，直接使用
+            original_speed_resampled = original_speed.values
+            generated_speed_resampled = generated_speed.values
+        
+        # 绘制按轨迹点索引的速度对比
+        ax5.plot(idx_original, original_speed_resampled, 'b-', label='原始速度', alpha=0.7)
+        ax5.plot(idx_generated, generated_speed_resampled, 'r--', label='生成速度', alpha=0.7)
+        ax5.set_title('按轨迹点索引的速度对比', fontsize=18)
+        ax5.set_xlabel('轨迹点索引', fontsize=16)
+        ax5.set_ylabel('速度 (m/s)', fontsize=16)
+        ax5.legend(fontsize=14)
+        ax5.grid(True)
+        
+        # 6. 留一个空位以便后续添加其他图表 (右下)
+        ax6.axis('off')
+        ax6.set_title('预留空间')
         
         # 调整布局
         plt.tight_layout()
-        
-        # 保存图像
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            plt.close(fig) 
+        plt.savefig(save_path, dpi=300)
+        plt.close() 

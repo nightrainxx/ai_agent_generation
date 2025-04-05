@@ -1,130 +1,76 @@
 # 轨迹生成器
 
-本项目实现了一个基于规则和统计特性的轨迹生成器，可以根据原始轨迹的关键航点生成新的轨迹。
-
-## 功能特点
-
-1. 从原始轨迹中提取关键航点
-   - 基于最小距离阈值
-   - 基于航向变化阈值
-   - 基于环境特征变化
-   
-2. 考虑环境因素的轨迹生成
-   - 地形高程(DEM)
-   - 坡度和坡向
-   - 土地覆盖类型
-   
-3. 轨迹验证和对比
-   - 速度统计特性对比
-   - 轨迹形状相似度计算
-   - 可视化对比结果
-
-## 项目结构
-
-```
-trajectory_generator/
-├── data/
-│   ├── environment/        # 环境数据
-│   │   ├── dem_aligned.tif
-│   │   ├── slope_aligned.tif
-│   │   ├── aspect_aligned.tif
-│   │   └── landcover_aligned.tif
-│   └── trajectories/       # 轨迹数据
-│       ├── trajectory_1.csv
-│       ├── trajectory_2.csv
-│       ├── trajectory_3.csv
-│       └── trajectory_4.csv
-├── src/
-│   ├── __init__.py
-│   ├── environment.py      # 环境地图类
-│   ├── generator.py        # 轨迹生成器类
-│   └── validation.py       # 轨迹验证器类
-├── results/               # 生成结果
-├── main.py               # 主程序
-├── requirements.txt      # 依赖包
-└── README.md            # 说明文档
-```
-
-## 安装依赖
-
-1. 创建conda环境:
-```bash
-conda create -n wargame python=3.8
-conda activate wargame
-```
-
-2. 安装依赖包:
-```bash
-pip install -r requirements.txt
-```
-
-## 数据准备
-
-1. 环境数据
-   - 将环境数据文件(.tif)放入`data/environment`目录
-   - 确保所有栅格数据已对齐
-   - 文件名必须为:
-     - `dem_aligned.tif`
-     - `slope_aligned.tif`
-     - `aspect_aligned.tif`
-     - `landcover_aligned.tif`
-
-2. 轨迹数据
-   - 将轨迹数据文件(.csv)放入`data/trajectories`目录
-   - 文件名格式: `trajectory_X.csv` (X=1,2,3,4)
-   - 必要的列:
-     - `timestamp_ms`: 时间戳(毫秒)
-     - `latitude`: 纬度
-     - `longitude`: 经度
-     - `velocity_north_ms`: 北向速度(米/秒)
-     - `velocity_east_ms`: 东向速度(米/秒)
-     - `heading_deg`: 航向角(度)
+## 项目概述
+本项目实现了一个基于环境特征和参数化规则的轨迹生成器，能够依据环境地形、坡度等因素生成真实的运动轨迹。
 
 ## 使用方法
+1. 准备环境数据（地形高度、坡度、土地覆盖等）
+2. 准备轨迹航点序列
+3. 运行生成器获取完整轨迹
 
-1. 激活conda环境:
 ```bash
+# 激活环境
 conda activate wargame
-```
 
-2. 运行主程序:
-```bash
-cd trajectory_generator
+# 运行主程序
 python main.py
 ```
 
-3. 查看结果:
-   - 生成的轨迹数据: `results/trajectory_X_generated.csv`
-   - 对比可视化图: `results/trajectory_X_comparison.png`
+## 项目结构
+- `src/`: 源代码目录
+  - `environment.py`: 环境数据处理
+  - `generator.py`: 轨迹生成器
+  - `validation.py`: 轨迹验证
+- `data/`: 数据目录
+  - `environment/`: 环境数据
+  - `trajectories/`: 轨迹数据
+- `results/`: 结果输出目录
 
-## 参数调整
+## 轨迹生成方法
 
-1. 航点提取参数 (`validation.py`):
-   - `min_distance`: 最小航点间距(米)
-   - `max_angle`: 最大航向变化(度)
+### 1. 关键点提取法 (之前方法)
+该方法首先从原始轨迹中提取关键航点，然后基于这些关键点生成完整轨迹。
 
-2. 生成规则参数 (`generator.py`):
-   - `base_speeds`: 不同地类的基准速度
-   - `slope_coefficients`: 坡度影响系数
+**优点**:
+- 有效减少计算量
+- 生成的轨迹简化且平滑
 
-3. 控制参数 (`generator.py`):
-   - `max_speed`: 最大速度限制
-   - `max_acceleration`: 最大加速度
-   - `max_turn_rate`: 最大转向速率
+**缺点**:
+- 可能丢失原始轨迹的细节变化
+- 生成轨迹的点数通常与原始轨迹不匹配
+- 速度模式可能与原始轨迹存在差异
 
-## 注意事项
+### 2. 全点轨迹跟踪法（当前方法）
+该方法直接使用原始轨迹的所有点作为航点，并保留原始速度信息，以更精确地重现轨迹。
 
-1. 环境数据要求:
-   - 所有栅格数据必须对齐(相同的分辨率和范围)
-   - 坐标系统为UTM Zone 30N (EPSG:32630)
-   - 土地覆盖类型编码:
-     - 20: 林地
-     - 40: 灌木地
-     - 60: 水体
-     - 90: 其他
+**优点**:
+- 轨迹形状与原始轨迹高度匹配
+- 速度模式与原始轨迹高度相关（相关性达到0.95以上）
+- 点数精确匹配原始轨迹
 
-2. 轨迹数据要求:
-   - 采样频率不低于1Hz
-   - 坐标系统为WGS84 (EPSG:4326)
-   - 速度单位为米/秒
-   - 航向角范围为0-360度 
+**实现方式**:
+1. 使用原始轨迹的每个点作为航点
+2. 提取原始轨迹的速度信息作为参考
+3. 结合环境特征（坡度、地形）调整速度
+4. 使用原始时间戳保证时间同步
+
+## 性能指标
+
+### 方法1（关键点提取）vs 方法2（全点轨迹跟踪）
+
+轨迹 | 方法 | 速度相关性 | Hausdorff距离(m)
+-----|------|------------|----------------
+轨迹1 | 方法1 | 0.115 | 2386.350
+轨迹1 | 方法2 | 0.958 | 526.548
+轨迹2 | 方法1 | 0.093 | 2378.538
+轨迹2 | 方法2 | 0.977 | 2378.319
+轨迹3 | 方法1 | 0.126 | 2357.850
+轨迹3 | 方法2 | 0.961 | 1218.485
+轨迹4 | 方法1 | 0.129 | 2376.013
+轨迹4 | 方法2 | 0.970 | 2375.700
+
+## 后续改进方向
+1. 优化计算效率，提高处理大规模轨迹点的能力
+2. 改进曲率计算方法，进一步提高转弯处的真实性
+3. 开发自适应参数调整机制，根据轨迹特征自动优化参数
+4. 探索更多环境要素对轨迹生成的影响 

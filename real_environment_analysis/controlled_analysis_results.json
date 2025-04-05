@@ -1,0 +1,172 @@
+{
+  "sequence": {
+    "林地": [
+      {
+        "slope_bin": "(-20.0, -10.0]",
+        "slope_range": "(-20.0, -10.0]",
+        "sample_size": 137,
+        "mean_speed": 5.687626016212365,
+        "std_speed": 0.5182641357999921,
+        "median_speed": 5.776374233604642,
+        "mean_slope": -12.124511337596331
+      },
+      {
+        "slope_bin": "(-5.0, 0.0]",
+        "slope_range": "(-5.0, 0.0]",
+        "sample_size": 413,
+        "mean_speed": 5.650752424531357,
+        "std_speed": 0.8408947192325297,
+        "median_speed": 5.775326758846443,
+        "mean_slope": -2.0084049790784935
+      },
+      {
+        "slope_bin": "(-10.0, -5.0]",
+        "slope_range": "(-10.0, -5.0]",
+        "sample_size": 309,
+        "mean_speed": 5.635395209461033,
+        "std_speed": 0.7754303344094955,
+        "median_speed": 5.762542841174896,
+        "mean_slope": -7.469689691652446
+      },
+      {
+        "slope_bin": "(0.0, 5.0]",
+        "slope_range": "(0.0, 5.0]",
+        "sample_size": 390,
+        "mean_speed": 5.975017152835801,
+        "std_speed": 0.8981303903855369,
+        "median_speed": 6.18187635957877,
+        "mean_slope": 1.8697168384538945
+      },
+      {
+        "slope_bin": "(5.0, 10.0]",
+        "slope_range": "(5.0, 10.0]",
+        "sample_size": 288,
+        "mean_speed": 6.157923636351109,
+        "std_speed": 0.6941132311645212,
+        "median_speed": 6.271470202882556,
+        "mean_slope": 7.467309436306099
+      },
+      {
+        "slope_bin": "(10.0, 20.0]",
+        "slope_range": "(10.0, 20.0]",
+        "sample_size": 127,
+        "mean_speed": 5.956199112913204,
+        "std_speed": 0.356340286488381,
+        "median_speed": 5.988998295655569,
+        "mean_slope": 12.253627041214884
+      }
+    ],
+    "灌木地": [
+      {
+        "slope_bin": "(20.0, 30.0]",
+        "slope_range": "(20.0, 30.0]",
+        "sample_size": 349,
+        "mean_speed": 1.856530757938197,
+        "std_speed": 2.1836159875133716,
+        "median_speed": 0.3744329028336861,
+        "mean_slope": 25.535577806018264
+      },
+      {
+        "slope_bin": "(-20.0, -10.0]",
+        "slope_range": "(-20.0, -10.0]",
+        "sample_size": 544,
+        "mean_speed": 4.824091859984527,
+        "std_speed": 1.8352919273649897,
+        "median_speed": 5.461874448389047,
+        "mean_slope": -14.484489907827536
+      },
+      {
+        "slope_bin": "(-30.0, -20.0]",
+        "slope_range": "(-30.0, -20.0]",
+        "sample_size": 338,
+        "mean_speed": 1.9699636745759364,
+        "std_speed": 2.2721872214159053,
+        "median_speed": 0.3019102904681804,
+        "mean_slope": -25.604611602087342
+      },
+      {
+        "slope_bin": "(-5.0, 0.0]",
+        "slope_range": "(-5.0, 0.0]",
+        "sample_size": 911,
+        "mean_speed": 4.836714570701634,
+        "std_speed": 1.8438317245530167,
+        "median_speed": 5.356957770582601,
+        "mean_slope": -2.4776135905065733
+      },
+      {
+        "slope_bin": "(-10.0, -5.0]",
+        "slope_range": "(-10.0, -5.0]",
+        "sample_size": 736,
+        "mean_speed": 4.98759618083219,
+        "std_speed": 1.712146202695191,
+        "median_speed": 5.308936971953348,
+        "mean_slope": -6.928056640213006
+      },
+      {
+        "slope_bin": "(0.0, 5.0]",
+        "slope_range": "(0.0, 5.0]",
+        "sample_size": 998,
+        "mean_speed": 4.628346256310274,
+        "std_speed": 1.9937040600885119,
+        "median_speed": 4.986707287663237,
+        "mean_slope": 2.5469907698198777
+      },
+      {
+        "slope_bin": "(5.0, 10.0]",
+        "slope_range": "(5.0, 10.0]",
+        "sample_size": 828,
+        "mean_speed": 4.090465082853014,
+        "std_speed": 2.1437029618744274,
+        "median_speed": 4.336686277185305,
+        "mean_slope": 6.929583630481012
+      },
+      {
+        "slope_bin": "(10.0, 20.0]",
+        "slope_range": "(10.0, 20.0]",
+        "sample_size": 579,
+        "mean_speed": 4.555516835227963,
+        "std_speed": 1.9510518857913477,
+        "median_speed": 4.446684086468581,
+        "mean_slope": 14.183005150416488
+      }
+    ],
+    "水体": [
+      {
+        "slope_bin": "(-5.0, 0.0]",
+        "slope_range": "(-5.0, 0.0]",
+        "sample_size": 281,
+        "mean_speed": 5.9972414683273065,
+        "std_speed": 0.7797672556110252,
+        "median_speed": 6.154185458468618,
+        "mean_slope": -1.1104019295819285
+      },
+      {
+        "slope_bin": "(-10.0, -5.0]",
+        "slope_range": "(-10.0, -5.0]",
+        "sample_size": 40,
+        "mean_speed": 6.026542888981227,
+        "std_speed": 0.4319297324436475,
+        "median_speed": 6.077710036012238,
+        "mean_slope": -7.418104730056188
+      },
+      {
+        "slope_bin": "(0.0, 5.0]",
+        "slope_range": "(0.0, 5.0]",
+        "sample_size": 206,
+        "mean_speed": 6.326956111019207,
+        "std_speed": 0.4979007096889167,
+        "median_speed": 6.334405998556145,
+        "mean_slope": 1.5867718289744213
+      },
+      {
+        "slope_bin": "(5.0, 10.0]",
+        "slope_range": "(5.0, 10.0]",
+        "sample_size": 41,
+        "mean_speed": 6.5826896407243085,
+        "std_speed": 0.43482760639784546,
+        "median_speed": 6.444610083351384,
+        "mean_slope": 7.45824109242536
+      }
+    ]
+  }
+}

@@ -255,10 +255,10 @@ class TrajectoryValidator:
             label='航点位置'
         )
         
-        plt.title('转角分析', fontsize=16, pad=20)
-        plt.xlabel('轨迹点索引', fontsize=14)
-        plt.ylabel('转角 (度)', fontsize=14)
-        plt.legend(fontsize=12)
+        plt.title('转角分析', fontsize=20, pad=20)
+        plt.xlabel('轨迹点索引', fontsize=18)
+        plt.ylabel('转角 (度)', fontsize=18)
+        plt.legend(fontsize=16)
         plt.grid(True)
         
         # 调整布局
